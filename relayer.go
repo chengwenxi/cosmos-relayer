@@ -1,8 +1,10 @@
 package main
 
 import (
-	"github.com/chengwenxi/cosmos-relayer/relayer"
+	"fmt"
 	"os"
+
+	"github.com/chengwenxi/cosmos-relayer/relayer"
 
 	"github.com/spf13/cobra"
 )
@@ -26,12 +28,23 @@ func init() {
 
 func addRelayerCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "add [chain0] [node0] [chain1] [node1]",
+		Use:     "start [chainId-a] [node-a] [name-a] [passphrase-a] [home-a] [chainId-b] [node-b] [name-b] [passphrase-b] [home-b]",
 		Short:   "Add a replayer for two blockchains",
-		Args:    cobra.ExactArgs(4),
-		Example: "relayer add chain0 tcp://localhost:26557 chain1 tcp://localhost:26657",
+		Args:    cobra.ExactArgs(10),
+		Example: `relayer start "chain-a" "tcp://localhost:26657" "n0" "12345678" "ibc-testnets/ibc-a/n0/iriscli/" "chain-b" "tcp://localhost:26557" "n1" "12345678" "ibc-testnets/ibc-b/n0/iriscli/"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			relayer.NewRelayer(args[0], args[1], args[2], args[3])
+			node0, err := relayer.NewNode(args[0], args[1], args[2], args[3], args[4])
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			node1, err := relayer.NewNode(args[5], args[6], args[7], args[8], args[9])
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			relayer := relayer.NewRelayer(node0, node1)
+			relayer.Start()
 			return nil
 		},
 	}
