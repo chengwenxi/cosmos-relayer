@@ -7,6 +7,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/stretchr/testify v1.4.0
 	github.com/tendermint/tendermint v0.32.6
+	golang.org/x/tools v0.0.0-20191018212557-ed542cd5b28a // indirect
 )
 
-replace github.com/cosmos/cosmos-sdk => /Users/bianjie/github.com/cosmos/cosmos-sdk
+replace github.com/cosmos/cosmos-sdk => github.com/irisnet/cosmos-sdk v0.23.2-0.20191021091835-f66d58df6d30
