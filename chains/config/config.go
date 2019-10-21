@@ -1,4 +1,4 @@
-package iris
+package config
 
 import sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -50,7 +50,7 @@ func GetConfig() *Config {
 	if NetworkType == Mainnet {
 		return mainnetConfig
 	}
-	return mainnetConfig
+	return testnetConfig
 }
 
 // GetBech32AccountAddrPrefix returns the Bech32 prefix for account address
@@ -83,11 +83,22 @@ func (config *Config) GetBech32ConsensusPubPrefix() string {
 	return config.bech32AddressPrefix["consensus_pub"]
 }
 
-func LoadConfig() {
+func LoadConfig(network string) {
 	config := sdk.GetConfig()
-	irisConfig := GetConfig()
-	config.SetBech32PrefixForAccount(irisConfig.GetBech32AccountAddrPrefix(), irisConfig.GetBech32AccountPubPrefix())
-	config.SetBech32PrefixForValidator(irisConfig.GetBech32ValidatorAddrPrefix(), irisConfig.GetBech32ValidatorPubPrefix())
-	config.SetBech32PrefixForConsensusNode(irisConfig.GetBech32ConsensusAddrPrefix(), irisConfig.GetBech32ConsensusPubPrefix())
-	config.Seal()
+	switch network {
+	case Cosmos:
+		config.SetBech32PrefixForAccount(sdk.Bech32PrefixAccAddr, sdk.Bech32PrefixAccPub)
+		config.SetBech32PrefixForValidator(sdk.Bech32PrefixValAddr, sdk.Bech32PrefixValPub)
+		config.SetBech32PrefixForConsensusNode(sdk.Bech32PrefixConsAddr, sdk.Bech32PrefixConsPub)
+	case Iris:
+		irisConfig := GetConfig()
+		config.SetBech32PrefixForAccount(irisConfig.GetBech32AccountAddrPrefix(), irisConfig.GetBech32AccountPubPrefix())
+		config.SetBech32PrefixForValidator(irisConfig.GetBech32ValidatorAddrPrefix(), irisConfig.GetBech32ValidatorPubPrefix())
+		config.SetBech32PrefixForConsensusNode(irisConfig.GetBech32ConsensusAddrPrefix(), irisConfig.GetBech32ConsensusPubPrefix())
+	}
 }
+
+const (
+	Cosmos = "cosmos"
+	Iris   = "iris"
+)
