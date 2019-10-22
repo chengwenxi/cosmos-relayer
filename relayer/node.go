@@ -22,7 +22,7 @@ type Node struct {
 
 func NewNode(chainId, node, name, passphrase, home string) (Node, error) {
 	var cdc = makeCodec()
-	ctx := ctx.NewCLIContext().WithCodec(cdc).WithBroadcastMode(flags.BroadcastBlock)
+	cliCtx := ctx.NewCLIContext().WithCodec(cdc).WithBroadcastMode(flags.BroadcastBlock)
 
 	keyBase, err := client.NewKeyBaseFromDir(home)
 	if err != nil {
@@ -34,16 +34,16 @@ func NewNode(chainId, node, name, passphrase, home string) (Node, error) {
 		return Node{}, err
 	}
 
-	ctx = ctx.WithNodeURI(node).
+	cliCtx = cliCtx.WithNodeURI(node).
 		WithChainID(chainId).
 		WithFromName(name).WithFromAddress(info.GetAddress())
 
-	ctx.OutputFormat = "text"
+	cliCtx.OutputFormat = "text"
 
 	builder := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
 	builder = builder.WithChainID(chainId).WithKeybase(keyBase)
 	return Node{
-		Ctx:        ctx,
+		Ctx:        cliCtx,
 		Builder:    builder,
 		cdc:        cdc,
 		Passphrase: passphrase,
