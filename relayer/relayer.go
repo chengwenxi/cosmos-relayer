@@ -28,24 +28,21 @@ func NewRelayer(node1, node2 Node) Relayer {
 
 func (r Relayer) Start() {
 	var subscribe = func(toNode Node, remote, subscriber string) error {
-		client := client.NewHTTP(remote, "/websocket")
-		err := client.Start()
+		c := client.NewHTTP(remote, "/websocket")
+		err := c.Start()
 		if err != nil {
 			return err
 		}
 
-		out, err := client.Subscribe(context.Background(), subscriber, types.EventQueryTx.String())
+		out, err := c.Subscribe(context.Background(), subscriber, types.EventQueryTx.String())
 		if err != nil {
 			return err
 		}
 		go func() {
-			for {
-				select {
-				case resultEvent := <-out:
-					toNode.LoadConfig()
-					data := resultEvent.Data.(types.EventDataTx)
-					r.handleEvent(toNode, data.Result.Events, uint64(data.Height))
-				}
+			for resultEvent := range out {
+				toNode.LoadConfig()
+				data := resultEvent.Data.(types.EventDataTx)
+				r.handleEvent(toNode, data.Result.Events, uint64(data.Height))
 			}
 		}()
 		return nil
