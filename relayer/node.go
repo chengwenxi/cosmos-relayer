@@ -81,7 +81,7 @@ func (n Node) LoadConfig() {
 	if strings.Contains(n.Ctx.ChainID, config.Cosmos) {
 		config.LoadConfig(config.Cosmos)
 	} else {
-		config.SetNetworkType(config.Testnet)
+		//config.SetNetworkType(config.Testnet)
 		config.LoadConfig(config.Iris)
 	}
 }
