@@ -1,6 +1,8 @@
 package relayer
 
 import (
+	"strings"
+
 	"github.com/chengwenxi/cosmos-relayer/chains/config"
 	"github.com/cosmos/cosmos-sdk/client"
 	ctx "github.com/cosmos/cosmos-sdk/client/context"
@@ -9,9 +11,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
-	"github.com/cosmos/cosmos-sdk/x/ibc"
-	mockbank "github.com/cosmos/cosmos-sdk/x/ibc/mock/bank"
-	"strings"
 )
 
 type Node struct {
@@ -79,23 +78,10 @@ func (n Node) SendTx(msgs []sdk.Msg) error {
 	return n.Ctx.PrintOutput(res)
 }
 func (n Node) LoadConfig() {
-	if strings.Contains(n.Ctx.ChainID, config.Iris) {
-		//iris.SetNetworkType(iris.Testnet)
-		config.LoadConfig(config.Iris)
-	} else {
+	if strings.Contains(n.Ctx.ChainID, config.Cosmos) {
 		config.LoadConfig(config.Cosmos)
+	} else {
+		config.SetNetworkType(config.Testnet)
+		config.LoadConfig(config.Iris)
 	}
-}
-
-func makeCodec() *codec.Codec {
-	var cdc = codec.New()
-
-	ibc.AppModuleBasic{}.RegisterCodec(cdc)
-	sdk.RegisterCodec(cdc)
-	auth.RegisterCodec(cdc)
-	mockbank.RegisterCdc(cdc)
-	codec.RegisterCrypto(cdc)
-	codec.RegisterEvidences(cdc)
-
-	return cdc.Seal()
 }

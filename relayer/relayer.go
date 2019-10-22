@@ -105,27 +105,3 @@ func (r Relayer) sendPacket(node Node, packetBz []byte, height uint64) {
 		return
 	}
 }
-
-func Subscribe(r Relayer, toNode Node, remote, subscriber string) error {
-	client := client.NewHTTP(remote, "/websocket")
-	err := client.Start()
-	if err != nil {
-		return err
-	}
-
-	out, err := client.Subscribe(context.Background(), subscriber, types.EventQueryTx.String())
-	if err != nil {
-		return err
-	}
-	go func() {
-		for {
-			select {
-			case resultEvent := <-out:
-				fmt.Println(subscriber)
-				data := resultEvent.Data.(types.EventDataTx)
-				r.handleEvent(toNode, data.Result.Events, uint64(data.Height))
-			}
-		}
-	}()
-	return nil
-}
