@@ -8,4 +8,4 @@ require (
 	github.com/tendermint/tendermint v0.32.6
 )
 
-replace github.com/cosmos/cosmos-sdk => github.com/irisnet/cosmos-sdk v0.23.2-0.20191021091835-f66d58df6d30
+replace github.com/cosmos/cosmos-sdk => github.com/irisnet/cosmos-sdk v0.23.2-0.20191024053222-fb9fd55110ea
