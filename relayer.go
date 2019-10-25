@@ -35,7 +35,7 @@ func initCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "init",
 		Short:   "Generate relayer configuration",
-		Example: `relayer init --home=./"`,
+		Example: `relayer init --home=./`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := config.Write(viper.GetString(FlagConfigDir))
 			if err != nil {
@@ -54,7 +54,7 @@ func startCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "start",
 		Short:   "Add a relayer for two blockchains",
-		Example: `relayer start --config-dir=./"`,
+		Example: `relayer start --config-dir=./`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := config.Load(viper.GetString(FlagConfigDir))
 			relay := relayer.NewRelayerFromCfgFile(cfg)
