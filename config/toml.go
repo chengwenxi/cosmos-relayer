@@ -66,7 +66,7 @@ title = "Realy Configuration Example"
 [[nodes]]
 
 # the chain id
-chain_id = "chain-iris"
+chain_id = "iris"
 # the chain node rpc address
 address = "tcp://localhost:26657"
 # IBC client id
@@ -100,7 +100,7 @@ consensus_pub = "icp"
 [[nodes]]
 
 # the chain id
-chain_id = "chain-gaia"
+chain_id = "cosmos"
 # the chain node rpc address
 address = "tcp://localhost:26557"
 # IBC client id

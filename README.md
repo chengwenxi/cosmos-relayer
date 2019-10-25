@@ -10,13 +10,14 @@ go mod tidy && make install
 
 ## Run
 
-1. Generate relayer configuration
+**1. Generate relayer configuration**
+
 ```bash
 relayer init --home=./
-``` 
+```
 
+**2. Modify the configuration file generated in the first step,and start relayer**
 
-2. Modify the configuration file generated in the first step,and start relayer
 ```bash
 relayer start --home=./
 ```
