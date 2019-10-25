@@ -11,7 +11,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	ctx "github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
@@ -20,9 +19,8 @@ import (
 )
 
 type Node struct {
-	Ctx            ctx.CLIContext
-	Builder        auth.TxBuilder
-	cdc            *codec.Codec
+	ctx.CLIContext
+	auth.TxBuilder
 	Passphrase     string
 	Id             string
 	CounterpartyId string
@@ -30,7 +28,9 @@ type Node struct {
 
 func NewNode(chainId, node, name, passphrase, home, id, counterpartyId string) (Node, error) {
 	var cdc = makeCodec()
-	cliCtx := ctx.NewCLIContext().WithCodec(cdc).WithBroadcastMode(flags.BroadcastBlock)
+	cliCtx := ctx.NewCLIContext().
+		WithCodec(cdc).
+		WithBroadcastMode(flags.BroadcastBlock)
 
 	keyBase, err := client.NewKeyBaseFromDir(home)
 	if err != nil {
@@ -44,16 +44,19 @@ func NewNode(chainId, node, name, passphrase, home, id, counterpartyId string) (
 
 	cliCtx = cliCtx.WithNodeURI(node).
 		WithChainID(chainId).
-		WithFromName(name).WithFromAddress(info.GetAddress())
+		WithFromName(name).
+		WithFromAddress(info.GetAddress())
 
-	cliCtx.OutputFormat = "text"
+	cliCtx.OutputFormat = "json"
 
-	builder := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
-	builder = builder.WithChainID(chainId).WithKeybase(keyBase)
+	builder := auth.NewTxBuilderFromCLI().
+		WithTxEncoder(utils.GetTxEncoder(cdc)).
+		WithChainID(chainId).
+		WithKeybase(keyBase)
+
 	return Node{
-		Ctx:            cliCtx,
-		Builder:        builder,
-		cdc:            cdc,
+		CLIContext:     cliCtx,
+		TxBuilder:      builder,
 		Passphrase:     passphrase,
 		Id:             id,
 		CounterpartyId: counterpartyId,
@@ -62,14 +65,13 @@ func NewNode(chainId, node, name, passphrase, home, id, counterpartyId string) (
 }
 
 func (n Node) SendTx(msgs []sdk.Msg) error {
-	txBldr, err := utils.PrepareTxBuilder(n.Builder, n.Ctx)
+	txBldr, err := utils.PrepareTxBuilder(n.TxBuilder, n.CLIContext)
 	if err != nil {
 		return err
 	}
+	fromName := n.GetFromName()
 
-	fromName := n.Ctx.GetFromName()
-
-	if n.Ctx.Simulate {
+	if n.Simulate {
 		return nil
 	}
 
@@ -80,16 +82,16 @@ func (n Node) SendTx(msgs []sdk.Msg) error {
 	}
 
 	// broadcast to a Tendermint node
-	res, err := n.Ctx.BroadcastTx(txBytes)
+	res, err := n.BroadcastTx(txBytes)
 	if err != nil {
 		return err
 	}
 
-	return n.Ctx.PrintOutput(res)
+	return n.PrintOutput(res)
 }
 
 func (n Node) GetHeader(h int64) (header tendermint.Header, err error) {
-	client := n.Ctx.Client
+	client := n.Client
 
 	commit, err := client.Commit(&h)
 	if err != nil {
@@ -118,12 +120,12 @@ func (n Node) GetHeader(h int64) (header tendermint.Header, err error) {
 
 func (n Node) GetProof(packet bankmock.Packet, h int64) (merkle.Proof, error) {
 	key := append([]byte("channels/"), ics04.KeyPacketCommitment(packet.MsourcePort, packet.MsourceChannel, packet.Msequence)...)
-	proof, err := n.Ctx.QueryStoreProof(key, "ibc", h)
+	proof, err := n.QueryStoreProof(key, "ibc", h)
 	return merkle.Proof{Proof: proof, Key: key}, err
 }
 
 func (n Node) LoadConfig() {
-	if strings.Contains(n.Ctx.ChainID, config.Cosmos) {
+	if strings.Contains(n.CLIContext.ChainID, config.Cosmos) {
 		config.LoadConfig(config.Cosmos)
 	} else {
 		//config.SetNetworkType(config.Testnet)
