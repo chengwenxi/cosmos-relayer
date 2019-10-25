@@ -78,7 +78,7 @@ func (r Relayer) handleEvent(node Node, data types.EventDataTx) {
 		case "send_packet":
 			counterpartyNode := r.GetNode(node.CounterpartyId)
 			txHash := strings.ToUpper(hex.EncodeToString(data.Tx.Hash()))
-			r.logger.Info("Listened transaction", "chainId", counterpartyNode.CLIContext.ChainID, "txHash", txHash)
+			r.logger.Info("Listened transaction", "sourceChain", counterpartyNode.CLIContext.ChainID, "height", data.Height, "txHash", txHash)
 			r.handlePacket(node, e, data.Height)
 		default:
 		}
@@ -97,13 +97,13 @@ func (r Relayer) handlePacket(node Node, event abciTypes.Event, height int64) {
 
 func (r Relayer) sendPacket(node Node, packetBz []byte, height int64) {
 	var packet bankmock.Packet
+	counterpartyNode := r.GetNode(node.CounterpartyId)
 
-	r.logger.Info("Received packet", "packet", string(packetBz))
+	r.logger.Info("Received packet", "sourceChain", counterpartyNode.CLIContext.ChainID, "packet", string(packetBz))
 	if err := packet.UnmarshalJSON(packetBz); err != nil {
 		r.logger.Error("UnmarshalJSON packet error", "error", err.Error())
 		return
 	}
-	counterpartyNode := r.GetNode(node.CounterpartyId)
 
 	r.waitForHeight(counterpartyNode, height+1)
 
@@ -126,7 +126,7 @@ func (r Relayer) sendPacket(node Node, packetBz []byte, height int64) {
 
 	err = node.SendTx([]sdk.Msg{msgUpdateClient, msg})
 	if err != nil {
-		r.logger.Error("Broadcast tx error", "targetChainId", node.CLIContext.ChainID)
+		r.logger.Error("Broadcast tx error", "targetChain", node.CLIContext.ChainID)
 		return
 	}
 }
@@ -140,11 +140,11 @@ func (r Relayer) waitForHeight(node Node, height int64) {
 
 	out, err := client.Subscribe(ctx, subscriber, query)
 	if err != nil {
-		r.logger.Error("Subscriber block event error", "targetChainId", node.CLIContext.ChainID, "height", height)
+		r.logger.Error("Subscriber block event error", "sourceChain", node.CLIContext.ChainID, "height", height)
 		return
 	}
 
-	r.logger.Info("Waiting for block to get proof", "chainId", node.CLIContext.ChainID, "height", height)
+	r.logger.Info("Waiting for block to get proof", "sourceChain", node.CLIContext.ChainID, "height", height)
 	for event := range out {
 		data := event.Data.(types.EventDataNewBlock)
 		if data.Block.Height >= height {

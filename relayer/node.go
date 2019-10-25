@@ -89,7 +89,7 @@ func (n Node) SendTx(msgs []sdk.Msg) error {
 		return err
 	}
 
-	n.logger.Info("Relay packet success", "targetChain", n.CLIContext.ChainID, "txHash", res.TxHash)
+	n.logger.Info("Relay packet success", "targetChain", n.CLIContext.ChainID, "height", res.Height, "txHash", res.TxHash)
 	return nil
 }
 
