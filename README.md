@@ -10,10 +10,12 @@ go mod tidy && make install
 
 ## Run
 
+Command
+
 ```bash
 relayer start \
-    [chainId-a] [node-a] [name-a] [password-a] [home-a] [client-id-a] \
-    [chainId-b] [node-b] [name-b] [password-b] [home-b] [client-id-b]
+    [chain-id-a] [node-a] [name-a] [password-a] [home-a] [client-id-a] \
+    [chain-id-b] [node-b] [name-b] [password-b] [home-b] [client-id-b]
 ```
 
 Example
