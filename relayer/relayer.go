@@ -2,17 +2,23 @@ package relayer
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	"os"
+	"strings"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ics02 "github.com/cosmos/cosmos-sdk/x/ibc/02-client/types"
 	ics23 "github.com/cosmos/cosmos-sdk/x/ibc/23-commitment"
 	bankmock "github.com/cosmos/cosmos-sdk/x/ibc/mock/bank"
 	abciTypes "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
 
 type Relayer struct {
-	nodes map[string]Node
+	nodes  map[string]Node
+	logger log.Logger
 }
 
 // NewRelayer returns a relayer which provide the service for one to one blockchain
@@ -21,7 +27,10 @@ func NewRelayer(node1, node2 Node) Relayer {
 		node1.Id: node1,
 		node2.Id: node2,
 	}
-	return Relayer{nodes}
+	return Relayer{
+		nodes:  nodes,
+		logger: log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
+	}
 }
 
 func (r Relayer) GetNode(id string) Node {
@@ -30,6 +39,8 @@ func (r Relayer) GetNode(id string) Node {
 
 func (r Relayer) Start() {
 	var subscribe = func(toNode Node) error {
+		toNode.WithLogger(r.logger)
+
 		counterpartyNode := r.GetNode(toNode.CounterpartyId)
 		client := counterpartyNode.Client
 		if err := client.Start(); err != nil {
@@ -57,7 +68,7 @@ func (r Relayer) Start() {
 			panic(err)
 		}
 	}
-	fmt.Println("Start relayer success")
+	r.logger.Info("Relayer start success")
 	select {}
 }
 
@@ -66,7 +77,8 @@ func (r Relayer) handleEvent(node Node, data types.EventDataTx) {
 		switch e.Type {
 		case "send_packet":
 			counterpartyNode := r.GetNode(node.CounterpartyId)
-			println(fmt.Sprintf("listening for transactions[hash=%X] from the %s chain", data.Tx.Hash(), counterpartyNode.CLIContext.ChainID))
+			txHash := strings.ToUpper(hex.EncodeToString(data.Tx.Hash()))
+			r.logger.Info("Listened transaction", "chainId", counterpartyNode.CLIContext.ChainID, "txHash", txHash)
 			r.handlePacket(node, e, data.Height)
 		default:
 		}
@@ -86,14 +98,14 @@ func (r Relayer) handlePacket(node Node, event abciTypes.Event, height int64) {
 func (r Relayer) sendPacket(node Node, packetBz []byte, height int64) {
 	var packet bankmock.Packet
 
-	println(fmt.Sprintf("receive packet: %s", string(packetBz)))
+	r.logger.Info("Received packet", "packet", string(packetBz))
 	if err := packet.UnmarshalJSON(packetBz); err != nil {
-		fmt.Println(fmt.Errorf("error unmarshalling packet: %v", packetBz))
+		r.logger.Error("UnmarshalJSON packet error", "error", err.Error())
 		return
 	}
 	counterpartyNode := r.GetNode(node.CounterpartyId)
 
-	waitForHeight(counterpartyNode, height+1)
+	r.waitForHeight(counterpartyNode, height+1)
 
 	header, err := counterpartyNode.GetHeader(height + 1)
 	if err != nil {
@@ -108,18 +120,18 @@ func (r Relayer) sendPacket(node Node, packetBz []byte, height int64) {
 
 	msg := bankmock.NewMsgRecvTransferPacket(packet, []ics23.Proof{proof}, uint64(height+1), node.FromAddress)
 	if err := msg.ValidateBasic(); err != nil {
-		fmt.Println(fmt.Errorf("err recv packet msg: %v", err.ABCILog()))
+		r.logger.Error("Validate msg error", "error", err.ABCILog())
 		return
 	}
 
 	err = node.SendTx([]sdk.Msg{msgUpdateClient, msg})
 	if err != nil {
-		fmt.Println(fmt.Errorf("broadcast tx error: %v", err))
+		r.logger.Error("Broadcast tx error", "targetChainId", node.CLIContext.ChainID)
 		return
 	}
 }
 
-func waitForHeight(node Node, height int64) {
+func (r Relayer) waitForHeight(node Node, height int64) {
 	client := node.Client
 
 	ctx := context.Background()
@@ -128,16 +140,17 @@ func waitForHeight(node Node, height int64) {
 
 	out, err := client.Subscribe(ctx, subscriber, query)
 	if err != nil {
-		fmt.Println(fmt.Errorf("failed subscriber : %s,%v", subscriber, err))
+		r.logger.Error("Subscriber block event error", "targetChainId", node.CLIContext.ChainID, "height", height)
 		return
 	}
 
-	fmt.Println(fmt.Sprintf("waitting for block : %d", height))
+	r.logger.Info("Waiting for block to get proof", "chainId", node.CLIContext.ChainID, "height", height)
 	for event := range out {
 		data := event.Data.(types.EventDataNewBlock)
 		if data.Block.Height >= height {
 			if err := client.Unsubscribe(ctx, subscriber, query); err != nil {
-				fmt.Println(fmt.Errorf("failed unsubscribe : %s,%v", subscriber, err))
+				r.logger.Error("Unsubscribe block event error", "height", height)
+
 				return
 			}
 			break

@@ -1,11 +1,11 @@
 package relayer
 
 import (
-	"fmt"
+	"strings"
+
 	"github.com/cosmos/cosmos-sdk/x/ibc/02-client/types/tendermint"
 	"github.com/cosmos/cosmos-sdk/x/ibc/23-commitment/merkle"
 	"github.com/tendermint/tendermint/types"
-	"strings"
 
 	"github.com/chengwenxi/cosmos-relayer/chains/config"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -16,6 +16,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	ics04 "github.com/cosmos/cosmos-sdk/x/ibc/04-channel/types"
 	bankmock "github.com/cosmos/cosmos-sdk/x/ibc/mock/bank"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type Node struct {
@@ -24,6 +25,7 @@ type Node struct {
 	Passphrase     string
 	Id             string
 	CounterpartyId string
+	logger         log.Logger
 }
 
 func NewNode(chainId, node, name, passphrase, home, id, counterpartyId string) (Node, error) {
@@ -87,7 +89,8 @@ func (n Node) SendTx(msgs []sdk.Msg) error {
 		return err
 	}
 
-	return n.PrintOutput(res)
+	n.logger.Info("Relay packet success", "targetChain", n.CLIContext.ChainID, "txHash", res.TxHash)
+	return nil
 }
 
 func (n Node) GetHeader(h int64) (header tendermint.Header, err error) {
@@ -95,20 +98,20 @@ func (n Node) GetHeader(h int64) (header tendermint.Header, err error) {
 
 	commit, err := client.Commit(&h)
 	if err != nil {
-		fmt.Println(fmt.Errorf("get commit error: %v", err.Error()))
+		n.logger.Error("Get commit error", "error", err.Error())
 		return
 	}
 
 	prevHeight := h - 1
 	validators, err := client.Validators(&prevHeight)
 	if err != nil {
-		fmt.Println(fmt.Errorf("get commit error: %v", err.Error()))
+		n.logger.Error("Get prev validators error", "error", err.Error(), "height", prevHeight)
 		return
 	}
 
 	nextValidators, err := client.Validators(&h)
 	if err != nil {
-		fmt.Println(fmt.Errorf("get validators error: %v", err.Error()))
+		n.logger.Error("Get validators error", "error", err.Error(), "height", h)
 		return
 	}
 	return tendermint.Header{
@@ -131,4 +134,8 @@ func (n Node) LoadConfig() {
 		//config.SetNetworkType(config.Testnet)
 		config.LoadConfig(config.Iris)
 	}
+}
+
+func (n *Node) WithLogger(logger log.Logger) {
+	n.logger = logger
 }
