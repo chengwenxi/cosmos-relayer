@@ -2,12 +2,16 @@ package main
 
 import (
 	"fmt"
+	"github.com/chengwenxi/cosmos-relayer/config"
+	"github.com/spf13/viper"
 	"os"
 
 	"github.com/chengwenxi/cosmos-relayer/relayer"
 
 	"github.com/spf13/cobra"
 )
+
+var FlagConfigDir = "home"
 
 func main() {
 	err := rootCmd.Execute()
@@ -23,45 +27,43 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(addRelayerCmd())
+	rootCmd.AddCommand(initCmd())
+	rootCmd.AddCommand(startCmd())
 }
 
-func addRelayerCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "start [chainId-a] [node-a] [name-a] [password-a] [home-a] [client-id-a] [chainId-b] [node-b] [name-b] [password-b] [home-b] [client-id-b]",
-		Short:   "Add a replayer for two blockchains",
-		Args:    cobra.ExactArgs(12),
-		Example: `relayer start "chain-a" "tcp://localhost:26657" "n0" "ibc-testnets/ibc-a/n0/iriscli/" "chain-b" "tcp://localhost:26557" "n1" "ibc-testnets/ibc-b/n0/iriscli/"`,
+func initCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "init",
+		Short:   "Generate relayer configuration",
+		Example: `relayer init --home=./"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			node0ChainId := args[0]
-			node0Url := args[1]
-			node0Name := args[2]
-			node0Password := args[3]
-			node0Home := args[4]
-			node0ClientId := args[5]
-
-			node1ChainId := args[6]
-			node1Url := args[7]
-			node1Name := args[8]
-			node1Password := args[9]
-			node1Home := args[10]
-			node1ClientId := args[11]
-
-			node0, err := relayer.NewNode(node0ChainId, node0Url, node0Name, node0Password, node0Home, node0ClientId, node1ClientId)
+			err := config.Write(viper.GetString(FlagConfigDir))
 			if err != nil {
-				fmt.Println(err)
-				return err
+				fmt.Println("init error", err.Error())
 			}
-
-			node1, err := relayer.NewNode(node1ChainId, node1Url, node1Name, node1Password, node1Home, node1ClientId, node0ClientId)
-			if err != nil {
-				fmt.Println(err)
-				return err
-			}
-			relayer := relayer.NewRelayer(node0, node1)
-			relayer.Start()
 			return nil
 		},
 	}
+	cmd.Flags().String(FlagConfigDir, "", "configuration file path")
+	_ = viper.BindPFlag(FlagConfigDir, cmd.Flags().Lookup(FlagConfigDir))
+	_ = cmd.MarkFlagRequired(FlagConfigDir)
+	return cmd
+}
+
+func startCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "start",
+		Short:   "Add a relayer for two blockchains",
+		Example: `relayer start --config-dir=./"`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg := config.Load(viper.GetString(FlagConfigDir))
+			relay := relayer.NewRelayerFromCfgFile(cfg)
+			relay.Start()
+			return nil
+		},
+	}
+	cmd.Flags().String(FlagConfigDir, "", "configuration file path")
+	_ = viper.BindPFlag(FlagConfigDir, cmd.Flags().Lookup(FlagConfigDir))
+	_ = cmd.MarkFlagRequired(FlagConfigDir)
+	return cmd
 }

@@ -1,13 +1,13 @@
 package relayer
 
 import (
-	"strings"
-
+	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/x/ibc"
 	"github.com/cosmos/cosmos-sdk/x/ibc/02-client/types/tendermint"
 	"github.com/cosmos/cosmos-sdk/x/ibc/23-commitment/merkle"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/chengwenxi/cosmos-relayer/chains/config"
+	"github.com/chengwenxi/cosmos-relayer/config"
 	"github.com/cosmos/cosmos-sdk/client"
 	ctx "github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
@@ -22,13 +22,15 @@ import (
 type Node struct {
 	ctx.CLIContext
 	auth.TxBuilder
-	Passphrase     string
-	Id             string
-	CounterpartyId string
-	logger         log.Logger
+	Passphrase           string
+	ClientId             string
+	ChannelId            string
+	CounterpartyClientId string
+	logger               log.Logger
+	prefix               config.Bech32Prefix
 }
 
-func NewNode(chainId, node, name, passphrase, home, id, counterpartyId string) (Node, error) {
+func NewNode(chainId, node, name, passphrase, home string) (*Node, error) {
 	var cdc = makeCodec()
 	cliCtx := ctx.NewCLIContext().
 		WithCodec(cdc).
@@ -36,12 +38,12 @@ func NewNode(chainId, node, name, passphrase, home, id, counterpartyId string) (
 
 	keyBase, err := client.NewKeyBaseFromDir(home)
 	if err != nil {
-		return Node{}, err
+		return &Node{}, err
 	}
 
 	info, err := keyBase.Get(name)
 	if err != nil {
-		return Node{}, err
+		return &Node{}, err
 	}
 
 	cliCtx = cliCtx.WithNodeURI(node).
@@ -56,17 +58,38 @@ func NewNode(chainId, node, name, passphrase, home, id, counterpartyId string) (
 		WithChainID(chainId).
 		WithKeybase(keyBase)
 
-	return Node{
-		CLIContext:     cliCtx,
-		TxBuilder:      builder,
-		Passphrase:     passphrase,
-		Id:             id,
-		CounterpartyId: counterpartyId,
+	return &Node{
+		CLIContext: cliCtx,
+		TxBuilder:  builder,
+		Passphrase: passphrase,
 	}, nil
 
 }
 
+func (n *Node) WithLogger(logger log.Logger) *Node {
+	n.logger = logger
+	return n
+}
+func (n *Node) WithClientId(clientId string) *Node {
+	n.ClientId = clientId
+	return n
+}
+func (n *Node) WithChannelId(channelId string) *Node {
+	n.ChannelId = channelId
+	return n
+}
+
+func (n *Node) WithCounterpartyClientId(clientId string) *Node {
+	n.CounterpartyClientId = clientId
+	return n
+}
+func (n *Node) WithPrefix(prefix config.Bech32Prefix) *Node {
+	n.prefix = prefix
+	return n
+}
+
 func (n Node) SendTx(msgs []sdk.Msg) error {
+	n.resetPrefix()
 	txBldr, err := utils.PrepareTxBuilder(n.TxBuilder, n.CLIContext)
 	if err != nil {
 		return err
@@ -127,15 +150,22 @@ func (n Node) GetProof(packet bankmock.Packet, h int64) (merkle.Proof, error) {
 	return merkle.Proof{Proof: proof, Key: key}, err
 }
 
-func (n Node) LoadConfig() {
-	if strings.Contains(n.CLIContext.ChainID, config.Cosmos) {
-		config.LoadConfig(config.Cosmos)
-	} else {
-		//config.SetNetworkType(config.Testnet)
-		config.LoadConfig(config.Iris)
-	}
+func (n *Node) resetPrefix() {
+	config := sdk.GetConfig()
+	config.SetBech32PrefixForAccount(n.prefix.AccountAddr, n.prefix.AccountPub)
+	config.SetBech32PrefixForValidator(n.prefix.ValidatorAddr, n.prefix.ValidatorPub)
+	config.SetBech32PrefixForConsensusNode(n.prefix.ConsensusAddr, n.prefix.ConsensusPub)
 }
 
-func (n *Node) WithLogger(logger log.Logger) {
-	n.logger = logger
+func makeCodec() *codec.Codec {
+	var cdc = codec.New()
+
+	ibc.AppModuleBasic{}.RegisterCodec(cdc)
+	sdk.RegisterCodec(cdc)
+	auth.RegisterCodec(cdc)
+	bankmock.RegisterCdc(cdc)
+	codec.RegisterCrypto(cdc)
+	codec.RegisterEvidences(cdc)
+
+	return cdc.Seal()
 }

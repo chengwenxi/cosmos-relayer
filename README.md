@@ -10,16 +10,13 @@ go mod tidy && make install
 
 ## Run
 
+1. Generate relayer configuration
 ```bash
-relayer start \
-    [chainId-a] [node-a] [name-a] [password-a] [home-a] [client-id-a] \
-    [chainId-b] [node-b] [name-b] [password-b] [home-b] [client-id-b]
-```
+relayer init --home=./
+``` 
 
-Example
 
+2. Modify the configuration file generated in the first step,and start relayer
 ```bash
-relayer start \
-    "iris" "tcp://localhost:26657" "n0" "12345678" "ibc-iris/n0/iriscli/" "client-to-gaia" \
-    "cosmos" "tcp://localhost:26557" "n0" "12345678" "ibc-gaia/n0/gaiacli/" "client-to-iris"
+relayer start --home=./
 ```

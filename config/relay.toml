@@ -1,0 +1,74 @@
+# This is a TOML config file.
+# For more information, see https://github.com/toml-lang/toml
+
+##### main base config options #####
+
+# Relay server name
+title = "Realy Configuration Example"
+
+# Chain node configuration
+[[nodes]]
+
+# the chain id
+chain_id = "chain-iris"
+# the chain node rpc address
+address = "tcp://localhost:26657"
+# IBC client id
+client_id = "client-to-gaia"
+# IBC channel id
+channel_id = "xxxx"
+# IBC counterparty client id
+counterparty_client_id = "client-to-iris"
+
+# relay node escrow account
+[nodes.escrow]
+
+# escrow account name
+name = "n0"
+# escrow account password for sign transaction
+passphrase = "12345678"
+# escrow account location
+home = "ibc-iris/n0/iriscli/"
+
+[nodes.bech32_prefix]
+account_addr = "iaa"
+validator_addr = "iva"
+consensus_addr = "ica"
+account_pub = "iap"
+validator_pub = "ivp"
+consensus_pub = "icp"
+
+#############other node configuration#####################
+
+# Chain node configuration
+[[nodes]]
+
+# the chain id
+chain_id = "chain-gaia"
+# the chain node rpc address
+address = "tcp://localhost:26557"
+# IBC client id
+client_id = "client-to-iris"
+# IBC channel id
+channel_id = "xxxx"
+# IBC counterparty client id
+counterparty_client_id = "client-to-gaia"
+
+# relay node escrow account
+[nodes.escrow]
+
+# escrow account name
+name = "n0"
+# escrow account password for sign transaction
+passphrase = "12345678"
+# escrow account location
+home = "ibc-gaia/n0/gaiacli/"
+
+[nodes.bech32_prefix]
+account_addr = "cosmos"
+account_pub = "cosmospub"
+validator_addr = "cosmosvaloper"
+validator_pub = "cosmosvaloperpub"
+consensus_addr = "cosmosvalcons"
+consensus_pub = "cosmosvalconspub"
+
